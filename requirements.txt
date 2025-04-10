@@ -1,0 +1,6 @@
+python-dotenv
+requests
+langchain-openai
+browser-use
+playwright
+keyring 
