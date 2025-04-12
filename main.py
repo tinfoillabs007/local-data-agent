@@ -120,32 +120,32 @@ def run_task():
                 }
                 # --- Run Agent ---
                 # run_agent_task now returns the extracted content directly
-                save_content = asyncio.run(run_agent_task(task="Open gmail.com and login with x_name and x_password then get the 2 latest emails in the inbox", sensitive_data=sensitive_data))
+                save_content = asyncio.run(run_agent_task(
+                    task="Open gmail.com and login with x_name and x_password then get the 2 latest emails in the inbox",
+                    sensitive_data=sensitive_data
+                ))
 
-                # Check if agent task failed (run_agent_task returns None on failure)
+                # Check if agent task failed
+                agent_failed = False
+                error_message = "Agent task failed or returned no content."
                 if save_content is None:
-                    logger.error("Agent task failed or returned no content.")
-                    # Decide how to handle agent failure - return error or continue without update?
-                    return jsonify({"success": False, "error": "Agent task failed or returned no content"}), 500
+                    agent_failed = True
+                elif isinstance(save_content, dict) and 'error' in save_content:
+                    agent_failed = True
+                    error_message = save_content['error']
+
+                if agent_failed:
+                    logger.error(error_message)
+                    return jsonify({"success": False, "error": error_message}), 500
 
                 logger.info(f"Agent task completed and returned content.")
-                # Log the type and potentially a snippet of the returned content
-                logger.debug(f"Type of returned content: {type(save_content)}")
-                if isinstance(save_content, str):
-                    logger.debug(f"Returned content snippet: {save_content[:200]}...")
-                elif isinstance(save_content, dict) or isinstance(save_content, list):
-                    try:
-                        logger.debug(f"Returned structured data snippet: {json.dumps(save_content, indent=2)[:200]}...")
-                    except:
-                        logger.debug("Returned structured data (non-JSON serializable snippet)." )
 
                 # --- Merge and Save ---
-                # Content is already extracted by run_agent_task
-                merged_data = vault_data.copy() # Start with existing data
-                merged_data['last_agent_update'] = { # Add/update the agent result
+                merged_data = vault_data.copy()
+                merged_data['last_agent_update'] = {
                     'timestamp': datetime.now().isoformat(),
                     'task_trigger': task,
-                    'result': save_content # Use the content from agent_runner
+                    'result': save_content
                 }
 
                 logger.info(f"Attempting to save merged vault data...")
